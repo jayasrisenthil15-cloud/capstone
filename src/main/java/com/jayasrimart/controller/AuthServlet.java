@@ -1,6 +1,7 @@
 package com.jayasrimart.controller;
 
 import com.jayasrimart.dao.UserDAO;
+import com.jayasrimart.model.Role;
 import com.jayasrimart.model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -13,6 +14,7 @@ import java.io.IOException;
 
 @WebServlet("/auth/*")
 public class AuthServlet extends HttpServlet {
+
     private UserDAO userDAO;
 
     @Override
@@ -21,88 +23,87 @@ public class AuthServlet extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        String action = request.getPathInfo();
+        String path = req.getPathInfo();
 
-        if (action == null || action.equals("/")) {
-            action = "/login";
-        }
-
-        switch (action) {
-            case "/login":
-                request.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(request, response);
-                break;
-            case "/register":
-                request.getRequestDispatcher("/WEB-INF/views/register.jsp").forward(request, response);
-                break;
-            case "/logout":
-                handleLogout(request, response);
-                break;
-            default:
-                response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                break;
+        if (path == null || path.equals("/") || path.equals("/login")) {
+            req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
+        } else if (path.equals("/register")) {
+            req.getRequestDispatcher("/WEB-INF/views/register.jsp").forward(req, resp);
+        } else if (path.equals("/logout")) {
+            HttpSession session = req.getSession(false);
+            if (session != null) {
+                session.invalidate();
+            }
+            resp.sendRedirect(req.getContextPath() + "/auth/login?logout=true");
+        } else {
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        String action = request.getPathInfo();
+        String path = req.getPathInfo();
 
-        if ("/login".equals(action)) {
-            handleLogin(request, response);
-        } else if ("/register".equals(action)) {
-            handleRegister(request, response);
+        if ("/login".equals(path)) {
+            handleLogin(req, resp);
+        } else if ("/register".equals(path)) {
+            handleRegister(req, resp);
         } else {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 
-    private void handleLogin(HttpServletRequest request, HttpServletResponse response)
+    private void handleLogin(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
+        String email = req.getParameter("email");
+        String password = req.getParameter("password");
 
-        User user = userDAO.loginUser(email, password);
-
-        if (user != null) {
-            HttpSession session = request.getSession();
-            session.setAttribute("user", user);
-            response.sendRedirect(request.getContextPath() + "/index.jsp");
-        } else {
-            request.setAttribute("error", "Invalid email or password");
-            request.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(request, response);
+        try {
+            User user = userDAO.getUserByEmail(email);
+            // Password verification
+            if (user != null && password.equals(user.getPassword())) {
+                HttpSession session = req.getSession();
+                session.setAttribute("user", user);
+                // Redirecting directly to index.jsp root
+                resp.sendRedirect(req.getContextPath() + "/");
+            } else {
+                req.setAttribute("errorMessage", "Invalid email or password.");
+                req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            req.setAttribute("errorMessage", "Database error: " + e.getMessage());
+            req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
         }
     }
 
-    private void handleRegister(HttpServletRequest request, HttpServletResponse response)
+    private void handleRegister(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        String name = request.getParameter("name");
-        String email = request.getParameter("email");
-        String password = request.getParameter("password");
+        String name = req.getParameter("name");
+        String email = req.getParameter("email");
+        String password = req.getParameter("password");
 
-        User user = new User();
-        user.setName(name);
-        user.setEmail(email);
-        user.setPasswordHash(password);
+        User newUser = new User();
+        newUser.setName(name);
+        newUser.setEmail(email);
+        newUser.setPassword(password);
+        newUser.setRole(Role.BUYER);
 
-        boolean isRegistered = userDAO.registerUser(user);
-
-        if (isRegistered) {
-            response.sendRedirect(request.getContextPath() + "/auth/login?registered=true");
-        } else {
-            request.setAttribute("error", "Registration failed. Email might already exist.");
-            request.getRequestDispatcher("/WEB-INF/views/register.jsp").forward(request, response);
+        try {
+            boolean success = userDAO.registerUser(newUser);
+            if (success) {
+                resp.sendRedirect(req.getContextPath() + "/auth/login?registered=true");
+            } else {
+                req.setAttribute("errorMessage", "Registration failed. Email might already exist.");
+                req.getRequestDispatcher("/WEB-INF/views/register.jsp").forward(req, resp);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            req.setAttribute("errorMessage", "Error: " + e.getMessage());
+            req.getRequestDispatcher("/WEB-INF/views/register.jsp").forward(req, resp);
         }
-    }
-
-    private void handleLogout(HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-        response.sendRedirect(request.getContextPath() + "/auth/login");
     }
 }

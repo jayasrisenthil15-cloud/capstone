@@ -3,7 +3,6 @@ package com.jayasrimart.controller;
 import com.jayasrimart.dao.CartDAO;
 import com.jayasrimart.model.CartItem;
 import com.jayasrimart.model.User;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -14,39 +13,56 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet("/cart")
+@WebServlet("/cart/*")
 public class CartServlet extends HttpServlet {
-    private CartDAO cartDAO = new CartDAO();
+
+    private CartDAO cartDAO;
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    public void init() throws ServletException {
+        cartDAO = new CartDAO();
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
         HttpSession session = req.getSession(false);
         User user = (session != null) ? (User) session.getAttribute("user") : null;
 
         if (user == null) {
-            resp.sendRedirect("login.jsp");
+            resp.sendRedirect(req.getContextPath() + "/auth/login");
             return;
         }
 
-        List<CartItem> cartList = cartDAO.getCartByUserId(user.getId());
-        req.setAttribute("cartList", cartList);
+        List<CartItem> items = cartDAO.getCartItemsByUserId(user.getId());
+        req.setAttribute("cartItems", items);
         req.getRequestDispatcher("/WEB-INF/views/cart.jsp").forward(req, resp);
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
         HttpSession session = req.getSession(false);
         User user = (session != null) ? (User) session.getAttribute("user") : null;
 
         if (user == null) {
-            resp.sendRedirect("login.jsp");
+            resp.sendRedirect(req.getContextPath() + "/auth/login");
             return;
         }
 
-        int productId = Integer.parseInt(req.getParameter("productId"));
-        int quantity = Integer.parseInt(req.getParameter("quantity"));
+        String path = req.getPathInfo();
+        if ("/add".equals(path)) {
+            String productName = req.getParameter("productName");
+            double price = Double.parseDouble(req.getParameter("price"));
 
-        cartDAO.addToCart(user.getId(), productId, quantity);
-        resp.sendRedirect("cart");
+            CartItem item = new CartItem();
+            item.setUserId(user.getId());
+            item.setProductName(productName);
+            item.setPrice(price);
+            item.setQuantity(1);
+
+            cartDAO.addToCart(item);
+            resp.sendRedirect(req.getContextPath() + "/cart");
+        }
     }
 }
