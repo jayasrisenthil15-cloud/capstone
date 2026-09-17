@@ -1,5 +1,9 @@
-#Fri Sep 18 01:05:28 IST 2026
-org.eclipse.jdt.core.compiler.codegen.targetPlatform=17
-org.eclipse.jdt.core.compiler.source=17
 eclipse.preferences.version=1
+org.eclipse.jdt.core.compiler.codegen.targetPlatform=17
 org.eclipse.jdt.core.compiler.compliance=17
+org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures=disabled
+org.eclipse.jdt.core.compiler.problem.forbiddenReference=warning
+org.eclipse.jdt.core.compiler.problem.reportPreviewFeatures=ignore
+org.eclipse.jdt.core.compiler.processAnnotations=disabled
+org.eclipse.jdt.core.compiler.release=disabled
+org.eclipse.jdt.core.compiler.source=17

@@ -1,8 +1,7 @@
 USE jayasrimart;
 
--- Default Accounts (User & Admin)
+-- Admin Account Only (Initial Seed Data)
 INSERT INTO users (name, email, password, role) VALUES 
-('Default User', 'user@jayasrimart.com', 'user123', 'USER'),
 ('System Admin', 'admin@jayasrimart.com', 'admin123', 'ADMIN')
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
